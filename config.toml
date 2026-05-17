@@ -1,0 +1,21 @@
+[threshold]
+mem_percent = 85
+swap_percent = 80
+# mem_abs_mb = 500  # 可选：可用内存绝对值阈值(MB)
+
+[ai]
+term_confidence = 0.8
+kill_confidence = 0.95
+leak_window_sec = 30
+idle_cpu_threshold = 5.0
+
+[protect]
+ignore_patterns = ["sshd", "bash", "zsh", "powershell", "explorer", "python.*aioom"]
+ignore_root = true
+protect_foreground = true
+
+[notify]
+log_file = "aioom.log"
+webhook_url = ""
+desktop_notify = false
+verbose = true

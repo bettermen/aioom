@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.spec
+*.toc
+
+# PyInstaller build artifacts
+*.toc
+*.pkg
+*.pyz
+COLLECT-*/
+*.manifest
+build/
+build_web/
+dist/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+aioom.log
+
+# Config (keep example, ignore local overrides)
+# config.toml  # keep the default config

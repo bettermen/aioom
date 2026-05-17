@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>aioom - AI OOM Guardian</title>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+:root {
+  --bg: #0f1117;
+  --bg2: #1a1d27;
+  --bg3: #242836;
+  --border: #2e3348;
+  --text: #e1e4ed;
+  --text2: #8b90a5;
+  --accent: #00d4aa;
+  --accent2: #00b894;
+  --warn: #fdcb6e;
+  --danger: #e17055;
+  --red: #ff6b6b;
+  --green: #51cf66;
+  --blue: #74c0fc;
+  --purple: #b197fc;
+  --orange: #ffa94d;
+  --radius: 10px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ===== 顶栏 ===== */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 24px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 100;
+}
+.topbar-left { display:flex; align-items:center; gap:12px; }
+.logo {
+  font-size: 20px; font-weight: 700;
+  background: linear-gradient(135deg, var(--accent), var(--blue));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.logo-sub { font-size:12px; color:var(--text2); }
+.status-dot {
+  width:8px; height:8px; border-radius:50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse 2s infinite;
+}
+.status-dot.paused { background: var(--warn); box-shadow: 0 0 8px var(--warn); animation: none; }
+.status-dot.offline { background: var(--red); box-shadow: 0 0 8px var(--red); animation: none; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.topbar-right { display:flex; align-items:center; gap:10px; }
+
+/* ===== 按钮 ===== */
+.btn {
+  padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--bg3); color: var(--text); cursor: pointer;
+  font-size: 13px; transition: all .2s;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn-accent {
+  background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600;
+}
+.btn-accent:hover { background: var(--accent2); }
+.btn-danger { border-color: var(--red); color: var(--red); }
+.btn-danger:hover { background: var(--red); color: #fff; }
+.btn-sm { padding: 3px 8px; font-size: 11px; }
+
+/* ===== 主布局 ===== */
+.main { padding: 16px 24px; }
+
+/* ===== Tab 导航 ===== */
+.tabs {
+  display: flex; gap: 2px; margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.tab {
+  padding: 8px 20px; cursor: pointer;
+  color: var(--text2); font-size: 14px; font-weight: 500;
+  border-bottom: 2px solid transparent;
+  transition: all .2s; user-select: none;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ===== 仪表盘 ===== */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 16px;
+}
+.card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+}
+.card-title {
+  font-size: 12px; color: var(--text2); text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 16px;
+}
+
+/* 仪表盘指标 */
+.gauges { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.gauge {
+  text-align: center; padding: 16px 8px;
+  background: var(--bg3); border-radius: 8px;
+}
+.gauge-label { font-size: 11px; color: var(--text2); margin-bottom: 8px; }
+.gauge-ring {
+  position: relative; width: 80px; height: 80px; margin: 0 auto 8px;
+}
+.gauge-ring svg { transform: rotate(-90deg); }
+.gauge-ring .value {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  font-size: 16px; font-weight: 700;
+}
+.gauge-sub { font-size: 11px; color: var(--text2); }
+
+/* 统计条 */
+.stats-bar {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 12px;
+}
+.stat-item {
+  text-align: center; padding: 10px;
+  background: var(--bg3); border-radius: 6px;
+}
+.stat-num { font-size: 20px; font-weight: 700; color: var(--accent); }
+.stat-label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+/* 图表容器 */
+.chart-wrap { position: relative; height: 200px; }
+
+/* ===== 进程表格 ===== */
+.toolbar {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px; flex-wrap: wrap;
+}
+.search {
+  padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--bg3); color: var(--text); font-size: 13px;
+  outline: none; width: 220px;
+}
+.search:focus { border-color: var(--accent); }
+select.filter {
+  padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--bg3); color: var(--text); font-size: 13px;
+}
+.table-wrap { overflow-x: auto; }
+table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+th {
+  text-align: left; padding: 8px 10px;
+  background: var(--bg3); color: var(--text2);
+  font-weight: 600; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .5px; cursor: pointer; white-space: nowrap;
+  user-select: none; border-bottom: 1px solid var(--border);
+}
+th:hover { color: var(--accent); }
+th .sort-arrow { margin-left: 4px; font-size: 10px; }
+td { padding: 7px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+tr:hover { background: rgba(0,212,170,0.03); }
+
+/* 标签 */
+.tag {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: 11px; font-weight: 600;
+}
+.tag-safe { background: rgba(81,207,102,.15); color: var(--green); }
+.tag-watch { background: rgba(253,203,110,.15); color: var(--warn); }
+.tag-term { background: rgba(255,169,77,.15); color: var(--orange); }
+.tag-kill { background: rgba(255,107,107,.15); color: var(--red); }
+.tag-protected { background: rgba(116,192,252,.15); color: var(--blue); }
+
+/* 进度条 */
+.conf-bar {
+  width: 50px; height: 6px; background: var(--bg3); border-radius: 3px;
+  display: inline-block; vertical-align: middle; margin-right: 6px; overflow: hidden;
+}
+.conf-bar-inner { height: 100%; border-radius: 3px; transition: width .3s; }
+
+/* 趋势 */
+.trend-up { color: var(--red); }
+.trend-down { color: var(--green); }
+.trend-flat { color: var(--text2); }
+
+/* ===== 配置面板 ===== */
+.config-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
+}
+.config-group {
+  background: var(--bg3); border-radius: 8px; padding: 16px;
+}
+.config-group h3 { font-size: 13px; color: var(--accent); margin-bottom: 12px; }
+.form-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.form-row label { font-size: 12px; color: var(--text2); }
+.form-input {
+  padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); font-size: 13px; width: 90px;
+  text-align: right;
+}
+.form-input:focus { border-color: var(--accent); outline: none; }
+.form-input.wide { width: 200px; text-align: left; }
+
+/* 开关 */
+.toggle {
+  position: relative; width: 36px; height: 20px; cursor: pointer;
+}
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle .slider {
+  position: absolute; inset: 0; background: var(--border); border-radius: 10px;
+  transition: .3s;
+}
+.toggle .slider::before {
+  content: ''; position: absolute; width: 16px; height: 16px;
+  left: 2px; bottom: 2px; background: #fff; border-radius: 50%; transition: .3s;
+}
+.toggle input:checked + .slider { background: var(--accent); }
+.toggle input:checked + .slider::before { transform: translateX(16px); }
+
+/* 保护标签 */
+.protect-tags {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;
+}
+.protect-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 4px; font-size: 12px; color: var(--text2);
+}
+.protect-tag .remove {
+  cursor: pointer; color: var(--red); font-size: 14px; font-weight: 700;
+  line-height: 1;
+}
+.add-pattern {
+  display: flex; gap: 6px; margin-top: 6px;
+}
+.add-pattern input {
+  flex: 1; padding: 4px 8px; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  font-size: 12px;
+}
+
+/* ===== 日志 ===== */
+.log-list { max-height: 500px; overflow-y: auto; }
+.log-entry {
+  display: flex; gap: 12px; padding: 8px 12px;
+  border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.log-entry:hover { background: rgba(255,255,255,0.02); }
+.log-time { color: var(--text2); font-size: 12px; min-width: 70px; }
+.log-level {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 3px; min-width: 50px; text-align: center;
+}
+.log-level-info { background: rgba(116,192,252,.15); color: var(--blue); }
+.log-level-alert { background: rgba(253,203,110,.15); color: var(--warn); }
+.log-level-kill { background: rgba(255,107,107,.15); color: var(--red); }
+.log-level-config { background: rgba(177,151,252,.15); color: var(--purple); }
+.log-level-error { background: rgba(255,107,107,.2); color: var(--red); }
+.log-msg { flex: 1; }
+.log-detail { font-size: 11px; color: var(--text2); }
+
+/* ===== Toast ===== */
+.toast-container {
+  position: fixed; top: 60px; right: 20px; z-index: 1000;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+  padding: 10px 16px; border-radius: 8px;
+  background: var(--bg2); border: 1px solid var(--border);
+  box-shadow: var(--shadow); font-size: 13px;
+  animation: slideIn .3s ease;
+  max-width: 320px;
+}
+.toast-warn { border-left: 3px solid var(--warn); }
+.toast-error { border-left: 3px solid var(--red); }
+.toast-success { border-left: 3px solid var(--green); }
+.toast-info { border-left: 3px solid var(--blue); }
+@keyframes slideIn { from { opacity:0; transform:translateX(30px); } to { opacity:1; transform:translateX(0); } }
+
+/* ===== 告警横幅 ===== */
+.alert-banner {
+  padding: 8px 16px; background: rgba(225,112,85,.15);
+  border-bottom: 1px solid var(--danger);
+  font-size: 13px; color: var(--danger);
+  animation: flashBg 1.5s infinite;
+}
+@keyframes flashBg { 0%,100%{background:rgba(225,112,85,.1)} 50%{background:rgba(225,112,85,.25)} }
+
+/* ===== 响应式 ===== */
+@media (max-width: 900px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .config-grid { grid-template-columns: 1fr; }
+  .gauges { grid-template-columns: 1fr 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- 告警横幅 -->
+  <div v-if="alertMsg" class="alert-banner">
+    &#9888; {{ alertMsg }}
+  </div>
+
+  <!-- 顶栏 -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="logo">aioom</span>
+      <span class="logo-sub">AI OOM Guardian v0.2</span>
+      <span class="status-dot" :class="sseStatus"></span>
+      <span style="font-size:11px;color:var(--text2)">
+        {{ sseStatus === 'offline' ? '未连接' : (paused ? '已暂停' : '守护中') }}
+      </span>
+    </div>
+    <div class="topbar-right">
+      <button class="btn" @click="togglePause" :class="paused ? 'btn-accent' : ''">
+        {{ paused ? '&#9654; 恢复' : '&#9646;&#9646; 暂停' }}
+      </button>
+      <button class="btn btn-danger btn-sm" @click="batchKill">一键清理</button>
+    </div>
+  </div>
+
+  <!-- 主区域 -->
+  <div class="main">
+    <!-- Tab 导航 -->
+    <div class="tabs">
+      <div class="tab" :class="{active: tab==='dashboard'}" @click="tab='dashboard'">
+        &#9632; 仪表盘
+      </div>
+      <div class="tab" :class="{active: tab==='processes'}" @click="tab='processes'">
+        &#9776; 进程列表
+      </div>
+      <div class="tab" :class="{active: tab==='config'}" @click="tab='config'">
+        &#9881; 配置
+      </div>
+      <div class="tab" :class="{active: tab==='logs'}" @click="tab='logs'">
+        &#9783; 日志
+      </div>
+    </div>
+
+    <!-- ====== 仪表盘 ====== -->
+    <div v-show="tab==='dashboard'">
+      <div class="dashboard-grid">
+        <!-- 左侧：指标 -->
+        <div>
+          <div class="card">
+            <div class="card-title">实时监控</div>
+            <div class="gauges">
+              <div class="gauge">
+                <div class="gauge-label">内存</div>
+                <div class="gauge-ring">
+                  <svg width="80" height="80" viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="34" fill="none" stroke="var(--border)" stroke-width="6"/>
+                    <circle cx="40" cy="40" r="34" fill="none"
+                      :stroke="gaugeColor(sys.mem_percent)"
+                      stroke-width="6" stroke-linecap="round"
+                      :stroke-dasharray="gaugeDash(sys.mem_percent)"/>
+                  </svg>
+                  <div class="value" :style="{color: gaugeColor(sys.mem_percent)}">
+                    {{ sys.mem_percent || 0 }}%
+                  </div>
+                </div>
+                <div class="gauge-sub">{{ fmtMb(sys.mem_available_mb) }} 可用</div>
+              </div>
+              <div class="gauge">
+                <div class="gauge-label">Swap</div>
+                <div class="gauge-ring">
+                  <svg width="80" height="80" viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="34" fill="none" stroke="var(--border)" stroke-width="6"/>
+                    <circle cx="40" cy="40" r="34" fill="none"
+                      :stroke="gaugeColor(sys.swap_percent)"
+                      stroke-width="6" stroke-linecap="round"
+                      :stroke-dasharray="gaugeDash(sys.swap_percent)"/>
+                  </svg>
+                  <div class="value" :style="{color: gaugeColor(sys.swap_percent)}">
+                    {{ sys.swap_percent || 0 }}%
+                  </div>
+                </div>
+                <div class="gauge-sub">{{ fmtMb(sys.swap_total_mb) }}</div>
+              </div>
+              <div class="gauge">
+                <div class="gauge-label">CPU</div>
+                <div class="gauge-ring">
+                  <svg width="80" height="80" viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="34" fill="none" stroke="var(--border)" stroke-width="6"/>
+                    <circle cx="40" cy="40" r="34" fill="none"
+                      :stroke="gaugeColor(sys.cpu_percent)"
+                      stroke-width="6" stroke-linecap="round"
+                      :stroke-dasharray="gaugeDash(sys.cpu_percent)"/>
+                  </svg>
+                  <div class="value" :style="{color: gaugeColor(sys.cpu_percent)}">
+                    {{ sys.cpu_percent || 0 }}%
+                  </div>
+                </div>
+                <div class="gauge-sub">负载</div>
+              </div>
+            </div>
+            <div class="stats-bar">
+              <div class="stat-item">
+                <div class="stat-num">{{ stats.process_count }}</div>
+                <div class="stat-label">进程数</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-num">{{ stats.alert_count }}</div>
+                <div class="stat-label">告警次数</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-num">{{ stats.kill_count }}</div>
+                <div class="stat-label">清理次数</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-num">{{ fmtUptime(stats.uptime_sec) }}</div>
+                <div class="stat-label">运行时长</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧：图表 -->
+        <div class="card">
+          <div class="card-title">历史趋势</div>
+          <div class="chart-wrap">
+            <canvas id="historyChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 进程列表 ====== -->
+    <div v-show="tab==='processes'">
+      <div class="card">
+        <div class="toolbar">
+          <input class="search" v-model="procSearch" placeholder="搜索进程名 / PID...">
+          <select class="filter" v-model="procFilter">
+            <option value="">全部</option>
+            <option value="term">需终止 (TERM)</option>
+            <option value="kill">需杀死 (KILL)</option>
+            <option value="watch">观察中 (WATCH)</option>
+            <option value="leak">泄漏中</option>
+            <option value="protected">受保护</option>
+          </select>
+          <button class="btn btn-sm" @click="loadProcesses">刷新</button>
+          <span style="flex:1"></span>
+          <span style="font-size:12px;color:var(--text2)">
+            {{ filteredProcesses.length }} / {{ processes.length }} 进程
+          </span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th @click="toggleSort('pid')">PID <span class="sort-arrow">{{ sortArrow('pid') }}</span></th>
+                <th @click="toggleSort('name')">进程名 <span class="sort-arrow">{{ sortArrow('name') }}</span></th>
+                <th @click="toggleSort('mem_mb')">内存 <span class="sort-arrow">{{ sortArrow('mem_mb') }}</span></th>
+                <th @click="toggleSort('mem_percent')">内存% <span class="sort-arrow">{{ sortArrow('mem_percent') }}</span></th>
+                <th @click="toggleSort('cpu_percent')">CPU% <span class="sort-arrow">{{ sortArrow('cpu_percent') }}</span></th>
+                <th>趋势</th>
+                <th @click="toggleSort('verdict')">判决 <span class="sort-arrow">{{ sortArrow('verdict') }}</span></th>
+                <th @click="toggleSort('confidence')">置信度 <span class="sort-arrow">{{ sortArrow('confidence') }}</span></th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in filteredProcesses" :key="p.pid">
+                <td>{{ p.pid }}</td>
+                <td :title="p.cmdline">{{ p.name }}</td>
+                <td>{{ fmtMb(p.mem_mb) }}</td>
+                <td>{{ p.mem_percent }}%</td>
+                <td>{{ p.cpu_percent }}%</td>
+                <td>
+                  <span :class="trendClass(p.mem_trend_mb_s)">
+                    {{ trendIcon(p.mem_trend_mb_s) }} {{ p.mem_trend_mb_s.toFixed(2) }}
+                  </span>
+                </td>
+                <td>
+                  <span class="tag" :class="'tag-'+p.verdict">{{ verdictLabel(p.verdict) }}</span>
+                  <span v-if="p.is_leaking" style="color:var(--red);margin-left:4px" title="内存泄漏">&#9888;</span>
+                </td>
+                <td>
+                  <span class="conf-bar">
+                    <span class="conf-bar-inner" :style="{width: (p.confidence*100)+'%', background: confColor(p.confidence)}"></span>
+                  </span>
+                  {{ (p.confidence*100).toFixed(0) }}%
+                </td>
+                <td>
+                  <button class="btn btn-sm btn-danger" @click="killProc(p.pid)" v-if="p.verdict!=='protected'">终止</button>
+                  <span v-else style="font-size:11px;color:var(--text2)">保护</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 配置面板 ====== -->
+    <div v-show="tab==='config'">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div class="card-title" style="margin:0">配置管理</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn" @click="loadConfig">重新加载</button>
+            <button class="btn btn-accent" @click="saveConfig">保存配置</button>
+          </div>
+        </div>
+        <div class="config-grid">
+          <!-- 阈值 -->
+          <div class="config-group">
+            <h3>阈值设置</h3>
+            <div class="form-row">
+              <label>内存告警 (%)</label>
+              <input class="form-input" type="number" v-model.number="cfg.threshold.mem_percent" min="50" max="99">
+            </div>
+            <div class="form-row">
+              <label>Swap 告警 (%)</label>
+              <input class="form-input" type="number" v-model.number="cfg.threshold.swap_percent" min="10" max="99">
+            </div>
+            <div class="form-row">
+              <label>绝对值 (MB)</label>
+              <input class="form-input" type="number" v-model.number="cfg.threshold.mem_abs_mb" min="0" step="100">
+            </div>
+          </div>
+          <!-- AI 参数 -->
+          <div class="config-group">
+            <h3>AI 参数</h3>
+            <div class="form-row">
+              <label>TERM 阈值</label>
+              <input class="form-input" type="number" v-model.number="cfg.ai.term_confidence" min="0" max="1" step="0.05">
+            </div>
+            <div class="form-row">
+              <label>KILL 阈值</label>
+              <input class="form-input" type="number" v-model.number="cfg.ai.kill_confidence" min="0" max="1" step="0.05">
+            </div>
+            <div class="form-row">
+              <label>泄漏窗口 (秒)</label>
+              <input class="form-input" type="number" v-model.number="cfg.ai.leak_window_sec" min="10" max="120">
+            </div>
+            <div class="form-row">
+              <label>空闲 CPU (%)</label>
+              <input class="form-input" type="number" v-model.number="cfg.ai.idle_cpu_threshold" min="0" max="50">
+            </div>
+          </div>
+          <!-- 通知 -->
+          <div class="config-group">
+            <h3>通知设置</h3>
+            <div class="form-row">
+              <label>Webhook URL</label>
+              <input class="form-input wide" type="text" v-model="cfg.notify.webhook_url">
+            </div>
+            <div class="form-row">
+              <label>桌面通知</label>
+              <label class="toggle">
+                <input type="checkbox" v-model="cfg.notify.desktop_notify">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="form-row">
+              <label>详细日志</label>
+              <label class="toggle">
+                <input type="checkbox" v-model="cfg.notify.verbose">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+          <!-- 保护规则 -->
+          <div class="config-group" style="grid-column: span 2">
+            <h3>保护规则</h3>
+            <div class="protect-tags">
+              <span class="protect-tag" v-for="(p,i) in cfg.protect.ignore_patterns" :key="i">
+                {{ p }}
+                <span class="remove" @click="removePattern(i)">&times;</span>
+              </span>
+            </div>
+            <div class="add-pattern">
+              <input type="text" v-model="newPattern" placeholder="添加保护规则（正则）" @keyup.enter="addPattern">
+              <button class="btn btn-sm" @click="addPattern">添加</button>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:20px">
+              <div class="form-row" style="margin:0">
+                <label>忽略 root/system</label>
+                <label class="toggle">
+                  <input type="checkbox" v-model="cfg.protect.ignore_root">
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="form-row" style="margin:0">
+                <label>保护前台进程</label>
+                <label class="toggle">
+                  <input type="checkbox" v-model="cfg.protect.protect_foreground">
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <!-- 全局 -->
+          <div class="config-group">
+            <h3>全局设置</h3>
+            <div class="form-row">
+              <label>采集间隔 (秒)</label>
+              <input class="form-input" type="number" v-model.number="cfg.interval" min="1" max="30" step="0.5">
+            </div>
+            <div class="form-row">
+              <label>Dryrun 模式</label>
+              <label class="toggle">
+                <input type="checkbox" v-model="cfg.dryrun">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div style="font-size:11px;color:var(--text2);margin-top:8px">
+              Dryrun 模式下只分析不执行清理操作
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 日志 ====== -->
+    <div v-show="tab==='logs'">
+      <div class="card">
+        <div class="toolbar">
+          <select class="filter" v-model="logFilter">
+            <option value="">全部</option>
+            <option value="alert">告警</option>
+            <option value="kill">清理</option>
+            <option value="config">配置</option>
+            <option value="error">错误</option>
+            <option value="info">信息</option>
+          </select>
+          <button class="btn btn-sm" @click="loadLogs">刷新</button>
+          <span style="flex:1"></span>
+          <span style="font-size:12px;color:var(--text2)">{{ filteredLogs.length }} 条记录</span>
+        </div>
+        <div class="log-list" ref="logList">
+          <div class="log-entry" v-for="(l,i) in filteredLogs" :key="i">
+            <span class="log-time">{{ l.timestamp }}</span>
+            <span class="log-level" :class="'log-level-'+l.level">{{ levelLabel(l.level) }}</span>
+            <span class="log-msg">{{ l.message }}</span>
+            <span class="log-detail" v-if="l.detail">{{ l.detail }}</span>
+          </div>
+          <div v-if="!filteredLogs.length" style="text-align:center;padding:40px;color:var(--text2)">
+            暂无日志
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 通知 -->
+  <div class="toast-container">
+    <div v-for="(t,i) in toasts" :key="i" class="toast" :class="'toast-'+t.type">
+      {{ t.msg }}
+    </div>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, computed, onMounted, onUnmounted, nextTick, watch } = Vue;
+
+createApp({
+  setup() {
+    // --- 状态 ---
+    const tab = ref('dashboard');
+    const paused = ref(false);
+    const sseStatus = ref('offline');
+    const alertMsg = ref('');
+    const toasts = ref([]);
+    const logList = ref(null);
+
+    // 系统指标
+    const sys = ref({});
+
+    // 统计
+    const stats = ref({ uptime_sec: 0, alert_count: 0, kill_count: 0, log_count: 0, process_count: 0, paused: false });
+
+    // 进程列表
+    const processes = ref([]);
+    const procSearch = ref('');
+    const procFilter = ref('');
+    const procSort = ref('confidence');
+    const procOrder = ref('desc');
+
+    // 日志
+    const logs = ref([]);
+    const logFilter = ref('');
+
+    // 配置
+    const cfg = ref({
+      threshold: { mem_percent: 85, swap_percent: 80, mem_abs_mb: null },
+      ai: { term_confidence: 0.8, kill_confidence: 0.95, leak_window_sec: 30, idle_cpu_threshold: 5 },
+      protect: { ignore_patterns: [], ignore_root: true, protect_foreground: true },
+      notify: { log_file: '', webhook_url: '', desktop_notify: false, verbose: true },
+      interval: 2.0,
+      dryrun: false,
+    });
+    const newPattern = ref('');
+
+    // 图表
+    let chart = null;
+    const chartData = { labels: [], mem: [], swap: [], cpu: [] };
+
+    // --- 工具方法 ---
+    const fmtMb = (v) => v != null ? (v >= 1024 ? (v/1024).toFixed(1)+'G' : Math.round(v)+'M') : '--';
+    const fmtUptime = (s) => {
+      if (!s) return '0m';
+      const h = Math.floor(s/3600);
+      const m = Math.floor((s%3600)/60);
+      return h > 0 ? `${h}h${m}m` : `${m}m`;
+    };
+
+    const gaugeColor = (pct) => {
+      if (pct == null) return 'var(--text2)';
+      if (pct >= 90) return 'var(--red)';
+      if (pct >= 75) return 'var(--warn)';
+      return 'var(--green)';
+    };
+    const gaugeDash = (pct) => {
+      const circ = 2 * Math.PI * 34;
+      return `${(circ * (pct||0) / 100)} ${circ}`;
+    };
+    const confColor = (c) => {
+      if (c >= 0.95) return 'var(--red)';
+      if (c >= 0.8) return 'var(--orange)';
+      if (c >= 0.3) return 'var(--warn)';
+      return 'var(--text2)';
+    };
+    const verdictLabel = (v) => ({ safe:'SAFE', watch:'WATCH', term:'TERM', kill:'KILL', protected:'PROTECTED' }[v] || v);
+    const levelLabel = (l) => ({ alert:'告警', kill:'清理', config:'配置', error:'错误', info:'信息' }[l] || l);
+
+    const trendIcon = (v) => v > 0.1 ? '\u2191' : v < -0.1 ? '\u2193' : '\u2192';
+    const trendClass = (v) => v > 0.1 ? 'trend-up' : v < -0.1 ? 'trend-down' : 'trend-flat';
+
+    const sortArrow = (field) => {
+      if (procSort.value !== field) return '';
+      return procOrder.value === 'desc' ? '\u25BC' : '\u25B2';
+    };
+    const toggleSort = (field) => {
+      if (procSort.value === field) {
+        procOrder.value = procOrder.value === 'desc' ? 'asc' : 'desc';
+      } else {
+        procSort.value = field;
+        procOrder.value = 'desc';
+      }
+    };
+
+    // --- 计算属性 ---
+    const filteredProcesses = computed(() => {
+      let list = [...processes.value];
+      // 搜索过滤
+      if (procSearch.value) {
+        const q = procSearch.value.toLowerCase();
+        list = list.filter(p => p.name.toLowerCase().includes(q) || String(p.pid).includes(q));
+      }
+      // 类型过滤
+      if (procFilter.value) {
+        if (procFilter.value === 'leak') {
+          list = list.filter(p => p.is_leaking);
+        } else {
+          list = list.filter(p => p.verdict === procFilter.value);
+        }
+      }
+      // 排序
+      const f = procSort.value;
+      list.sort((a, b) => {
+        let va = a[f], vb = b[f];
+        if (typeof va === 'string') return procOrder.value === 'desc' ? vb.localeCompare(va) : va.localeCompare(vb);
+        return procOrder.value === 'desc' ? (vb||0) - (va||0) : (va||0) - (vb||0);
+      });
+      return list;
+    });
+
+    const filteredLogs = computed(() => {
+      if (!logFilter.value) return logs.value;
+      return logs.value.filter(l => l.level === logFilter.value);
+    });
+
+    // --- API ---
+    const api = async (url, opts) => {
+      try {
+        const r = await fetch(url, opts);
+        return await r.json();
+      } catch (e) {
+        console.error('API error:', e);
+        return null;
+      }
+    };
+
+    const loadProcesses = () => api('/api/processes?limit=200&sort=confidence&order=desc').then(d => {
+      if (d && d.processes) processes.value = d.processes;
+    });
+    const loadConfig = () => api('/api/config').then(d => {
+      if (d) cfg.value = d;
+    });
+    const loadLogs = () => api('/api/logs?limit=200').then(d => {
+      if (d && d.logs) logs.value = d.logs;
+    });
+    const loadStats = () => api('/api/stats').then(d => {
+      if (d) { stats.value = d; paused.value = d.paused; }
+    });
+    const loadHistory = () => api('/api/history').then(d => {
+      if (d && d.history) {
+        chartData.labels = d.history.map(h => h.t);
+        chartData.mem = d.history.map(h => h.mem);
+        chartData.swap = d.history.map(h => h.swap);
+        chartData.cpu = d.history.map(h => h.cpu);
+        updateChart();
+      }
+    });
+
+    const saveConfig = async () => {
+      const r = await api('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cfg.value),
+      });
+      if (r && r.status === 'ok') {
+        showToast('success', '配置已保存并生效');
+      } else {
+        showToast('error', '保存失败');
+      }
+    };
+
+    const killProc = async (pid) => {
+      if (!confirm(`确定要终止进程 PID ${pid} 吗？`)) return;
+      const r = await api(`/api/kill/${pid}?action=term`, { method: 'POST' });
+      if (r) showToast(r.success ? 'success' : 'error', `${r.message}`);
+      loadProcesses();
+    };
+
+    const batchKill = async () => {
+      if (!confirm('确定要执行一键清理吗？将终止 AI 评分最高的 3 个进程。')) return;
+      const r = await api('/api/kill/batch?max_kills=3', { method: 'POST' });
+      if (r && r.results) {
+        r.results.forEach(kr => showToast(kr.success ? 'success' : 'error', kr.message));
+      }
+      loadProcesses();
+    };
+
+    const togglePause = async () => {
+      const r = await api('/api/pause', { method: 'POST' });
+      if (r) {
+        paused.value = r.paused;
+        showToast('info', paused.value ? '守护已暂停' : '守护已恢复');
+        loadStats();
+      }
+    };
+
+    // --- 保护规则 ---
+    const addPattern = () => {
+      const p = newPattern.value.trim();
+      if (p && !cfg.value.protect.ignore_patterns.includes(p)) {
+        cfg.value.protect.ignore_patterns.push(p);
+        newPattern.value = '';
+      }
+    };
+    const removePattern = (i) => {
+      cfg.value.protect.ignore_patterns.splice(i, 1);
+    };
+
+    // --- Toast ---
+    const showToast = (type, msg) => {
+      toasts.value.push({ type, msg });
+      setTimeout(() => { toasts.value.shift(); }, 4000);
+    };
+
+    // --- 图表 ---
+    const initChart = () => {
+      const ctx = document.getElementById('historyChart');
+      if (!ctx) return;
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            { label: 'MEM %', data: [], borderColor: '#ff6b6b', backgroundColor: 'rgba(255,107,107,0.1)', borderWidth: 2, pointRadius: 0, tension: 0.3, fill: true },
+            { label: 'Swap %', data: [], borderColor: '#74c0fc', backgroundColor: 'rgba(116,192,252,0.05)', borderWidth: 2, pointRadius: 0, tension: 0.3, fill: true },
+            { label: 'CPU %', data: [], borderColor: '#51cf66', backgroundColor: 'rgba(81,207,102,0.05)', borderWidth: 2, pointRadius: 0, tension: 0.3, fill: true },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          animation: { duration: 300 },
+          scales: {
+            x: { display: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8b90a5', maxTicksLimit: 8, font: { size: 10 } } },
+            y: { display: true, min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8b90a5', font: { size: 10 }, callback: v => v+'%' } },
+          },
+          plugins: {
+            legend: { labels: { color: '#e1e4ed', font: { size: 11 }, boxWidth: 12, padding: 16 } },
+          },
+          interaction: { intersect: false, mode: 'index' },
+        },
+      });
+    };
+    const updateChart = () => {
+      if (!chart) return;
+      chart.data.labels = chartData.labels;
+      chart.data.datasets[0].data = chartData.mem;
+      chart.data.datasets[1].data = chartData.swap;
+      chart.data.datasets[2].data = chartData.cpu;
+      chart.update('none');
+    };
+
+    // --- SSE ---
+    let es = null;
+    const connectSSE = () => {
+      if (es) es.close();
+      es = new EventSource('/api/events');
+      es.onopen = () => { sseStatus.value = 'online'; };
+      es.onerror = () => { sseStatus.value = 'offline'; };
+
+      es.addEventListener('system', (e) => {
+        const d = JSON.parse(e.data);
+        sys.value = d;
+        // 追加图表数据
+        const now = new Date();
+        const label = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
+        chartData.labels.push(label);
+        chartData.mem.push(d.mem_percent);
+        chartData.swap.push(d.swap_percent);
+        chartData.cpu.push(d.cpu_percent);
+        // 限制 300 点
+        if (chartData.labels.length > 300) {
+          chartData.labels.shift();
+          chartData.mem.shift();
+          chartData.swap.shift();
+          chartData.cpu.shift();
+        }
+        updateChart();
+      });
+
+      es.addEventListener('alert', (e) => {
+        const d = JSON.parse(e.data);
+        alertMsg.value = d.message;
+        showToast('warn', d.message);
+        loadStats();
+        setTimeout(() => { alertMsg.value = ''; }, 8000);
+      });
+
+      es.addEventListener('kill', (e) => {
+        const d = JSON.parse(e.data);
+        if (d.batch) {
+          d.batch.forEach(kr => showToast(kr.success ? 'success' : 'error', kr.message));
+        } else {
+          showToast(d.success ? 'success' : 'error', d.message);
+        }
+        loadStats();
+        loadLogs();
+        loadProcesses();
+      });
+
+      es.addEventListener('config_changed', () => {
+        showToast('info', '配置已更新');
+        loadConfig();
+      });
+    };
+
+    // --- 生命周期 ---
+    onMounted(async () => {
+      initChart();
+      loadConfig();
+      loadStats();
+      loadLogs();
+      loadHistory();
+      loadProcesses();
+      connectSSE();
+      // 定期刷新进程列表和统计
+      setInterval(() => {
+        loadProcesses();
+        loadStats();
+      }, 5000);
+    });
+
+    onUnmounted(() => {
+      if (es) es.close();
+    });
+
+    return {
+      tab, paused, sseStatus, alertMsg, toasts, logList,
+      sys, stats, processes, procSearch, procFilter, procSort, procOrder,
+      logs, logFilter, cfg, newPattern,
+      filteredProcesses, filteredLogs,
+      fmtMb, fmtUptime, gaugeColor, gaugeDash, confColor,
+      verdictLabel, levelLabel, trendIcon, trendClass,
+      sortArrow, toggleSort,
+      loadProcesses, loadConfig, loadLogs, loadStats,
+      saveConfig, killProc, batchKill, togglePause,
+      addPattern, removePattern, showToast,
+    };
+  },
+}).mount('#app');
+</script>
+</body>
+</html>
