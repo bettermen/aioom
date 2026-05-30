@@ -39,6 +39,9 @@ jobs:
             echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Login to ClawHub
+        run: clawhub login --token ${{ secrets.CLAWHUB_TOKEN }}
+
       - name: Publish skill to ClawHub
         run: |
           clawhub --no-input skill publish . \
