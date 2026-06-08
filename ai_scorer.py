@@ -19,12 +19,43 @@ from collector import ProcessSnapshot, SystemSnapshot
 
 
 class Verdict(Enum):
-    """AI 判决结果"""
+    """AI 判决结果 - 三色分级体系
+    红灯 (red): 可安全清理 - TERM/KILL
+    黄灯 (yellow): 需关注 - WATCH/SAFE
+    绿灯 (green): 不要碰 - PROTECTED/SAFE
+    """
     SAFE = "safe"                # 安全，不处理
     WATCH = "watch"              # 观察，不处理
-    TERM = "term"                # 建议优雅终止
-    KILL = "kill"                # 建议强制杀死
+    TERM = "term"                # 建议优雅终止 (SIGTERM)
+    KILL = "kill"                # 建议强制杀死 (SIGKILL)
     PROTECTED = "protected"      # 受保护进程
+
+    @property
+    def color(self) -> str:
+        """三色分级: red/yellow/green"""
+        if self in (Verdict.TERM, Verdict.KILL):
+            return "red"
+        elif self in (Verdict.WATCH, Verdict.SAFE):
+            return "yellow"
+        else:  # PROTECTED
+            return "green"
+
+    @property
+    def color_label(self) -> str:
+        """三色中文标签"""
+        return {"red": "红灯-可清理", "yellow": "黄灯-需关注", "green": "绿灯-安全"}.get(self.color, "")
+
+    @property
+    def description(self) -> str:
+        """判决详细描述"""
+        descs = {
+            Verdict.PROTECTED: "受保护进程：命中保护规则、系统核心进程或前台交互进程，终止可能导致系统不稳定。",
+            Verdict.SAFE: "安全进程：综合评分较低，无内存泄漏，无异常行为，建议保持运行。",
+            Verdict.WATCH: "观察进程：有一定内存占用或轻微异常趋势，暂不处理但持续监控。",
+            Verdict.TERM: "建议终止：AI 评估认为该进程可优雅终止（SIGTERM），终止后应用有机会保存状态。",
+            Verdict.KILL: "建议强杀：AI 高度确信该进程异常（泄漏/僵尸），建议强制终止（SIGKILL）。",
+        }
+        return descs.get(self, "")
 
 
 @dataclass
@@ -43,6 +74,14 @@ class ScoreResult:
     @property
     def should_act(self) -> bool:
         return self.verdict in (Verdict.TERM, Verdict.KILL)
+
+    @property
+    def color(self) -> str:
+        return self.verdict.color
+
+    @property
+    def description(self) -> str:
+        return self.verdict.description
 
 
 class AIScorer:

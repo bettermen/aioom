@@ -11,6 +11,13 @@
 - 🛡️ **白名单保护** — 支持进程名/模式匹配保护重要进程
 - 📦 **单文件可执行** — PyInstaller 打包，无需安装 Python
 
+### v0.2 新特性 — 三色分级体系
+
+- 🚦 **三色分级 UI** — 🔴红灯(可清理) 🟡黄灯(需关注) 🟢绿灯(安全)，进程按风险分组过滤
+- 📖 **进程智能百科** — 35+ 常见进程百科，点击查看用途、终止影响、安全建议
+- 📊 **内存健康报告** — 一键生成三色统计摘要、优化建议、分类内存占用分析
+- 💡 **智能优化建议** — 根据内存水位自动生成个性化优化方案
+
 ## 🚀 快速开始
 
 ### 方式一：直接运行源码
@@ -32,16 +39,17 @@ dist/aioom.exe       # CLI 版
 
 ```
 aioom/
-├── aioom.py        # CLI 主入口
-├── web.py          # Web GUI 后端 (FastAPI)
-├── collector.py    # 系统信息采集 (psutil)
-├── ai_scorer.py    # AI 危险度评分引擎
-├── killer.py       # 进程终止执行器
-├── notifier.py     # 告警通知模块
-├── config.py       # TOML 配置加载器
-├── config.toml     # 默认配置文件
+├── aioom.py              # CLI 主入口
+├── web.py                # Web GUI 后端 (FastAPI)
+├── collector.py          # 系统信息采集 (psutil)
+├── ai_scorer.py          # AI 危险度评分引擎 (三色分级)
+├── killer.py             # 进程终止执行器
+├── notifier.py           # 告警通知模块
+├── process_knowledge.py  # 进程智能百科数据库
+├── config.py             # TOML 配置加载器
+├── config.toml           # 默认配置文件
 └── static/
-    └── index.html  # Vue 3 单页应用前端
+    └── index.html        # Vue 3 单页应用前端 (三色 UI + 报告)
 ```
 
 ## ⚙️ 配置说明

@@ -26,6 +26,7 @@ from collector import Collector, SystemSnapshot, ProcessSnapshot
 from ai_scorer import AIScorer, Verdict, ScoreResult
 from killer import Killer, KillResult
 from config import load_config, Config, ThresholdConfig, AIConfig, ProtectConfig, NotifyConfig
+from process_knowledge import lookup as knowledge_lookup, to_dict as knowledge_to_dict
 
 VERSION = "0.2.0"
 HOST = "127.0.0.1"
@@ -337,6 +338,95 @@ async def api_pause():
     return {"paused": state.paused}
 
 
+@app.get("/api/report")
+async def api_report():
+    """内存健康报告数据（三色分级统计 + 优化建议）"""
+    procs = state.processes
+    system = state.system
+
+    # 三色统计
+    color_counts = {"red": 0, "yellow": 0, "green": 0}
+    color_procs = {"red": [], "yellow": [], "green": []}
+    total_mem = 0.0
+    red_mem = 0.0
+
+    for p in procs:
+        c = p.get("color", "yellow")
+        color_counts[c] = color_counts.get(c, 0) + 1
+        if c in color_procs:
+            entry = {
+                "pid": p["pid"],
+                "name": p["name"],
+                "mem_mb": p["mem_mb"],
+                "mem_percent": p["mem_percent"],
+                "verdict": p["verdict"],
+                "confidence": p["confidence"],
+                "reasons": p["reasons"],
+                "knowledge": p.get("knowledge", {}),
+            }
+            color_procs[c].append(entry)
+        total_mem += p.get("mem_mb", 0)
+        if c == "red":
+            red_mem += p.get("mem_mb", 0)
+
+    # 按内存排序每个颜色组
+    for c in color_procs:
+        color_procs[c].sort(key=lambda x: x["mem_mb"], reverse=True)
+
+    # 优化建议
+    suggestions = []
+    if system:
+        mem_pct = system.mem_percent
+        if mem_pct >= 90:
+            suggestions.append("内存严重不足，建议立即清理红灯进程并关闭不必要的应用。")
+        elif mem_pct >= 75:
+            suggestions.append("内存偏高，建议关注黄灯进程，关闭不常用的应用。")
+        else:
+            suggestions.append("内存状态良好，继续保持。")
+
+        if system.swap_percent >= 50:
+            suggestions.append(f"Swap 使用率 {system.swap_percent:.0f}%，说明内存曾不足，已使用磁盘交换，系统可能变慢。")
+        if red_mem > 500:
+            suggestions.append(f"红灯进程总占用 {red_mem:.0f}MB，清理后可释放大量内存。")
+
+    # 分类统计
+    category_counts = {}
+    for p in procs:
+        cat = p.get("knowledge", {}).get("category", "other")
+        emoji = p.get("knowledge", {}).get("category_emoji", "📦")
+        key = f"{emoji} {cat}"
+        if key not in category_counts:
+            category_counts[key] = {"count": 0, "mem_mb": 0}
+        category_counts[key]["count"] += 1
+        category_counts[key]["mem_mb"] += p.get("mem_mb", 0)
+
+    # 排序分类
+    sorted_categories = sorted(category_counts.items(), key=lambda x: x[1]["mem_mb"], reverse=True)
+
+    return {
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "system": {
+            "mem_percent": round(system.mem_percent, 1) if system else 0,
+            "mem_available_mb": round(system.mem_available_mb, 0) if system else 0,
+            "mem_total_mb": round(system.mem_total_mb, 0) if system else 0,
+            "swap_percent": round(system.swap_percent, 1) if system else 0,
+            "cpu_percent": round(system.cpu_percent, 1) if system else 0,
+        },
+        "color_counts": color_counts,
+        "color_procs": color_procs,
+        "total_process_mem_mb": round(total_mem, 1),
+        "red_mem_mb": round(red_mem, 1),
+        "suggestions": suggestions,
+        "categories": [{"name": k, **v} for k, v in sorted_categories],
+        "stats": {
+            "uptime": round(time.time() - state.start_time),
+            "alert_count": state.alert_count,
+            "kill_count": state.kill_count,
+            "total_processes": len(procs),
+        },
+    }
+
+
 # ============================================================
 # SSE 实时推送
 # ============================================================
@@ -386,6 +476,8 @@ def merge_processes_scores(processes: List[ProcessSnapshot], scores: List[ScoreR
     result = []
     for p in processes:
         s = score_map.get(p.pid)
+        # 进程百科
+        knowledge = knowledge_to_dict(knowledge_lookup(p.name, p.cmdline))
         result.append({
             "pid": p.pid,
             "name": p.name,
@@ -400,12 +492,15 @@ def merge_processes_scores(processes: List[ProcessSnapshot], scores: List[ScoreR
             "io_read_mb": round(p.io_read_mb, 1),
             "io_write_mb": round(p.io_write_mb, 1),
             "verdict": s.verdict.value if s else "safe",
+            "color": s.verdict.color if s else "yellow",
             "confidence": round(s.confidence, 3) if s else 0.0,
             "is_leaking": s.is_leaking if s else False,
             "is_foreground": s.is_foreground if s else False,
             "mem_trend_mb_s": round(s.mem_trend_mb_s, 2) if s else 0.0,
             "cpu_trend_p_s": round(s.cpu_trend_p_s, 2) if s else 0.0,
             "reasons": s.reasons if s else [],
+            "description": s.verdict.description if s else "",
+            "knowledge": knowledge,
         })
     return result
 

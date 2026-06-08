@@ -171,7 +171,7 @@ th .sort-arrow { margin-left: 4px; font-size: 10px; }
 td { padding: 7px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 tr:hover { background: rgba(0,212,170,0.03); }
 
-/* 标签 */
+/* 三色标签 */
 .tag {
   display: inline-block; padding: 2px 8px; border-radius: 4px;
   font-size: 11px; font-weight: 600;
@@ -181,6 +181,24 @@ tr:hover { background: rgba(0,212,170,0.03); }
 .tag-term { background: rgba(255,169,77,.15); color: var(--orange); }
 .tag-kill { background: rgba(255,107,107,.15); color: var(--red); }
 .tag-protected { background: rgba(116,192,252,.15); color: var(--blue); }
+
+/* 三色分组标签 */
+.color-filter-btn {
+  padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--bg3); color: var(--text2); cursor: pointer;
+  font-size: 12px; font-weight: 600; transition: all .2s;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.color-filter-btn:hover { border-color: var(--accent); }
+.color-filter-btn.active-red { background: rgba(255,107,107,.2); color: var(--red); border-color: var(--red); }
+.color-filter-btn.active-yellow { background: rgba(253,203,110,.2); color: var(--warn); border-color: var(--warn); }
+.color-filter-btn.active-green { background: rgba(81,207,102,.2); color: var(--green); border-color: var(--green); }
+.color-filter-btn.active-all { background: rgba(0,212,170,.15); color: var(--accent); border-color: var(--accent); }
+
+.color-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.color-dot-red { background: var(--red); }
+.color-dot-yellow { background: var(--warn); }
+.color-dot-green { background: var(--green); }
 
 /* 进度条 */
 .conf-bar {
@@ -300,11 +318,112 @@ tr:hover { background: rgba(0,212,170,0.03); }
 }
 @keyframes flashBg { 0%,100%{background:rgba(225,112,85,.1)} 50%{background:rgba(225,112,85,.25)} }
 
+/* ===== 报告页 ===== */
+.report-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
+  margin-bottom: 16px;
+}
+.report-card {
+  background: var(--bg3); border-radius: 8px; padding: 20px;
+  text-align: center; position: relative; overflow: hidden;
+}
+.report-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.report-card-red::before { background: var(--red); }
+.report-card-yellow::before { background: var(--warn); }
+.report-card-green::before { background: var(--green); }
+.report-num {
+  font-size: 36px; font-weight: 800; margin: 8px 0 4px;
+}
+.report-num-red { color: var(--red); }
+.report-num-yellow { color: var(--warn); }
+.report-num-green { color: var(--green); }
+.report-label { font-size: 13px; color: var(--text2); }
+.report-sub { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
+.report-section { margin-top: 16px; }
+.report-section h3 {
+  font-size: 14px; color: var(--accent); margin-bottom: 12px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.report-suggestion {
+  padding: 8px 12px; margin-bottom: 8px; border-radius: 6px;
+  background: rgba(0,212,170,.08); border-left: 3px solid var(--accent);
+  font-size: 13px; color: var(--text);
+}
+.report-proc-list {
+  max-height: 300px; overflow-y: auto;
+}
+.report-proc-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 12px; border-bottom: 1px solid var(--border); font-size: 12px;
+}
+.report-proc-item:hover { background: rgba(255,255,255,.02); }
+.report-proc-name { font-weight: 600; }
+.report-proc-mem { color: var(--text2); }
+.report-proc-reasons { color: var(--text2); font-size: 11px; flex: 1; margin-left: 12px; }
+
+.category-bar-wrap { margin-bottom: 8px; }
+.category-bar-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 12px;
+}
+.category-bar-label { min-width: 100px; color: var(--text2); }
+.category-bar-track {
+  flex: 1; height: 16px; background: var(--bg); border-radius: 4px; overflow: hidden;
+  position: relative;
+}
+.category-bar-fill {
+  height: 100%; border-radius: 4px; transition: width .5s;
+  display: flex; align-items: center; justify-content: flex-end; padding-right: 6px;
+  font-size: 10px; font-weight: 700; color: #000; min-width: 30px;
+}
+.category-bar-info { min-width: 80px; text-align: right; color: var(--text2); font-size: 11px; }
+
+/* ===== 百科弹窗 ===== */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200; animation: fadeIn .2s;
+}
+@keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+.modal {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 24px; max-width: 480px; width: 90%;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5);
+}
+.modal h3 {
+  font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+}
+.modal .modal-category {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  background: rgba(116,192,252,.15); color: var(--blue); font-size: 11px; font-weight: 600;
+}
+.modal .modal-desc { font-size: 13px; color: var(--text); margin: 12px 0; line-height: 1.6; }
+.modal .modal-impact { font-size: 13px; color: var(--orange); margin: 8px 0; padding: 8px 12px; background: rgba(255,169,77,.08); border-radius: 6px; }
+.modal .modal-rec { font-size: 12px; margin-top: 12px; }
+.modal .modal-rec-safe { color: var(--green); }
+.modal .modal-rec-caution { color: var(--warn); }
+.modal .modal-rec-danger { color: var(--red); }
+.modal .modal-close {
+  margin-top: 16px; width: 100%; padding: 8px; border-radius: 6px;
+  background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+  cursor: pointer; font-size: 13px;
+}
+.modal .modal-close:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ===== 进程名可点击 ===== */
+.proc-name-link {
+  cursor: pointer; color: var(--blue); text-decoration: none;
+}
+.proc-name-link:hover { text-decoration: underline; }
+
 /* ===== 响应式 ===== */
 @media (max-width: 900px) {
   .dashboard-grid { grid-template-columns: 1fr; }
   .config-grid { grid-template-columns: 1fr; }
   .gauges { grid-template-columns: 1fr 1fr 1fr; }
+  .report-grid { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -343,6 +462,9 @@ tr:hover { background: rgba(0,212,170,0.03); }
       </div>
       <div class="tab" :class="{active: tab==='processes'}" @click="tab='processes'">
         &#9776; 进程列表
+      </div>
+      <div class="tab" :class="{active: tab==='report'}" @click="loadReport(); tab='report'">
+        &#128202; 健康报告
       </div>
       <div class="tab" :class="{active: tab==='config'}" @click="tab='config'">
         &#9881; 配置
@@ -440,19 +562,27 @@ tr:hover { background: rgba(0,212,170,0.03); }
       </div>
     </div>
 
-    <!-- ====== 进程列表 ====== -->
+    <!-- ====== 进程列表（三色分级） ====== -->
     <div v-show="tab==='processes'">
       <div class="card">
         <div class="toolbar">
           <input class="search" v-model="procSearch" placeholder="搜索进程名 / PID...">
-          <select class="filter" v-model="procFilter">
-            <option value="">全部</option>
-            <option value="term">需终止 (TERM)</option>
-            <option value="kill">需杀死 (KILL)</option>
-            <option value="watch">观察中 (WATCH)</option>
-            <option value="leak">泄漏中</option>
-            <option value="protected">受保护</option>
-          </select>
+          <!-- 三色分组过滤器 -->
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:11px;color:var(--text2);margin-right:4px">三色:</span>
+            <button class="color-filter-btn" :class="{'active-all': colorFilter==='all'}" @click="colorFilter='all'">
+              <span class="color-dot" style="background:var(--accent)"></span> 全部 {{ processes.length }}
+            </button>
+            <button class="color-filter-btn" :class="{'active-red': colorFilter==='red'}" @click="colorFilter='red'">
+              <span class="color-dot color-dot-red"></span> 红灯 {{ colorCounts.red }}
+            </button>
+            <button class="color-filter-btn" :class="{'active-yellow': colorFilter==='yellow'}" @click="colorFilter='yellow'">
+              <span class="color-dot color-dot-yellow"></span> 黄灯 {{ colorCounts.yellow }}
+            </button>
+            <button class="color-filter-btn" :class="{'active-green': colorFilter==='green'}" @click="colorFilter='green'">
+              <span class="color-dot color-dot-green"></span> 绿灯 {{ colorCounts.green }}
+            </button>
+          </div>
           <button class="btn btn-sm" @click="loadProcesses">刷新</button>
           <span style="flex:1"></span>
           <span style="font-size:12px;color:var(--text2)">
@@ -469,7 +599,7 @@ tr:hover { background: rgba(0,212,170,0.03); }
                 <th @click="toggleSort('mem_percent')">内存% <span class="sort-arrow">{{ sortArrow('mem_percent') }}</span></th>
                 <th @click="toggleSort('cpu_percent')">CPU% <span class="sort-arrow">{{ sortArrow('cpu_percent') }}</span></th>
                 <th>趋势</th>
-                <th @click="toggleSort('verdict')">判决 <span class="sort-arrow">{{ sortArrow('verdict') }}</span></th>
+                <th @click="toggleSort('color')">三色 <span class="sort-arrow">{{ sortArrow('color') }}</span></th>
                 <th @click="toggleSort('confidence')">置信度 <span class="sort-arrow">{{ sortArrow('confidence') }}</span></th>
                 <th>操作</th>
               </tr>
@@ -477,7 +607,11 @@ tr:hover { background: rgba(0,212,170,0.03); }
             <tbody>
               <tr v-for="p in filteredProcesses" :key="p.pid">
                 <td>{{ p.pid }}</td>
-                <td :title="p.cmdline">{{ p.name }}</td>
+                <td>
+                  <span class="proc-name-link" @click="showKnowledge(p)" :title="p.cmdline">
+                    {{ p.knowledge.category_emoji || '' }} {{ p.name }}
+                  </span>
+                </td>
                 <td>{{ fmtMb(p.mem_mb) }}</td>
                 <td>{{ p.mem_percent }}%</td>
                 <td>{{ p.cpu_percent }}%</td>
@@ -487,7 +621,8 @@ tr:hover { background: rgba(0,212,170,0.03); }
                   </span>
                 </td>
                 <td>
-                  <span class="tag" :class="'tag-'+p.verdict">{{ verdictLabel(p.verdict) }}</span>
+                  <span class="color-dot" :class="'color-dot-'+p.color" :title="colorDesc(p.color)"></span>
+                  <span class="tag" :class="'tag-'+p.verdict" :title="p.description">{{ verdictLabel(p.verdict) }}</span>
                   <span v-if="p.is_leaking" style="color:var(--red);margin-left:4px" title="内存泄漏">&#9888;</span>
                 </td>
                 <td>
@@ -497,12 +632,109 @@ tr:hover { background: rgba(0,212,170,0.03); }
                   {{ (p.confidence*100).toFixed(0) }}%
                 </td>
                 <td>
-                  <button class="btn btn-sm btn-danger" @click="killProc(p.pid)" v-if="p.verdict!=='protected'">终止</button>
-                  <span v-else style="font-size:11px;color:var(--text2)">保护</span>
+                  <button class="btn btn-sm btn-danger" @click="killProc(p.pid)" v-if="p.color==='red'">终止</button>
+                  <span v-else style="font-size:11px;color:var(--text2)" :title="colorDesc(p.color)">{{ colorZh(p.color) }}</span>
                 </td>
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 健康报告 ====== -->
+    <div v-show="tab==='report'">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div class="card-title" style="margin:0">内存健康报告</div>
+          <span style="font-size:12px;color:var(--text2)">{{ reportData.timestamp || '加载中...' }}</span>
+        </div>
+
+        <!-- 三色统计 -->
+        <div class="report-grid">
+          <div class="report-card report-card-red">
+            <div class="report-label">&#128308; 红灯 - 可清理</div>
+            <div class="report-num report-num-red">{{ reportData.color_counts?.red || 0 }}</div>
+            <div class="report-sub">{{ fmtMb(reportData.red_mem_mb) }} 可释放</div>
+          </div>
+          <div class="report-card report-card-yellow">
+            <div class="report-label">&#128992; 黄灯 - 需关注</div>
+            <div class="report-num report-num-yellow">{{ reportData.color_counts?.yellow || 0 }}</div>
+            <div class="report-sub">有异常趋势，持续监控</div>
+          </div>
+          <div class="report-card report-card-green">
+            <div class="report-label">&#128994; 绿灯 - 安全</div>
+            <div class="report-num report-num-green">{{ reportData.color_counts?.green || 0 }}</div>
+            <div class="report-sub">系统核心与受保护进程</div>
+          </div>
+        </div>
+
+        <!-- 系统概况 -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" v-if="reportData.system">
+          <div class="stat-item">
+            <div class="stat-num" :style="{color:gaugeColor(reportData.system.mem_percent)}">{{ reportData.system.mem_percent }}%</div>
+            <div class="stat-label">内存占用</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">{{ fmtMb(reportData.system.mem_available_mb) }}</div>
+            <div class="stat-label">可用内存</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num" :style="{color:gaugeColor(reportData.system.swap_percent)}">{{ reportData.system.swap_percent }}%</div>
+            <div class="stat-label">Swap</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">{{ reportData.system.cpu_percent }}%</div>
+            <div class="stat-label">CPU</div>
+          </div>
+        </div>
+
+        <!-- 优化建议 -->
+        <div class="report-section" v-if="reportData.suggestions?.length">
+          <h3>&#128161; 优化建议</h3>
+          <div class="report-suggestion" v-for="(s,i) in reportData.suggestions" :key="i">
+            {{ s }}
+          </div>
+        </div>
+
+        <!-- 分类内存占用 -->
+        <div class="report-section" v-if="reportData.categories?.length">
+          <h3>&#128202; 分类内存占用</h3>
+          <div class="category-bar-wrap">
+            <div class="category-bar-row" v-for="cat in reportData.categories" :key="cat.name">
+              <span class="category-bar-label">{{ cat.name }}</span>
+              <div class="category-bar-track">
+                <div class="category-bar-fill" :style="{width: catBarWidth(cat.mem_mb)+'%', background: catColor(cat.name)}">
+                  {{ cat.count }}
+                </div>
+              </div>
+              <span class="category-bar-info">{{ fmtMb(cat.mem_mb) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 红灯进程列表 -->
+        <div class="report-section" v-if="reportData.color_procs?.red?.length">
+          <h3>&#128308; 红灯进程详情（可安全清理）</h3>
+          <div class="report-proc-list">
+            <div class="report-proc-item" v-for="p in reportData.color_procs.red" :key="p.pid">
+              <span class="report-proc-name">{{ p.knowledge.category_emoji || '' }} {{ p.name }} (PID:{{ p.pid }})</span>
+              <span class="report-proc-mem">{{ fmtMb(p.mem_mb) }}</span>
+              <span class="report-proc-reasons">{{ p.reasons.slice(0,2).join(' | ') }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 黄灯进程列表 -->
+        <div class="report-section" v-if="reportData.color_procs?.yellow?.length">
+          <h3>&#128992; 黄灯进程详情（需关注）</h3>
+          <div class="report-proc-list">
+            <div class="report-proc-item" v-for="p in reportData.color_procs.yellow" :key="p.pid">
+              <span class="report-proc-name">{{ p.knowledge.category_emoji || '' }} {{ p.name }} (PID:{{ p.pid }})</span>
+              <span class="report-proc-mem">{{ fmtMb(p.mem_mb) }}</span>
+              <span class="report-proc-reasons">{{ p.reasons.slice(0,2).join(' | ') }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -659,6 +891,28 @@ tr:hover { background: rgba(0,212,170,0.03); }
     </div>
   </div>
 
+  <!-- 百科弹窗 -->
+  <div v-if="knowledgeModal" class="modal-overlay" @click.self="knowledgeModal=null">
+    <div class="modal">
+      <h3>
+        {{ knowledgeModal.emoji }} {{ knowledgeModal.name }}
+        <span class="modal-category">{{ knowledgeModal.category }}</span>
+      </h3>
+      <div class="modal-desc">{{ knowledgeModal.description }}</div>
+      <div class="modal-impact">&#9888; 终止影响：{{ knowledgeModal.kill_impact }}</div>
+      <div class="modal-rec" :class="'modal-rec-'+knowledgeModal.recommendation">
+        {{ knowledgeModal.recommendation === 'safe' ? '✅ 可安全终止' : knowledgeModal.recommendation === 'caution' ? '⚠️ 需谨慎操作' : '🚫 强烈建议不要终止' }}
+      </div>
+      <div v-if="knowledgeModal.reasons?.length" style="margin-top:12px">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:4px">AI 分析：</div>
+        <div v-for="r in knowledgeModal.reasons" :key="r" style="font-size:12px;color:var(--text);padding:2px 0">
+          &bull; {{ r }}
+        </div>
+      </div>
+      <button class="modal-close" @click="knowledgeModal=null">关闭</button>
+    </div>
+  </div>
+
   <!-- Toast 通知 -->
   <div class="toast-container">
     <div v-for="(t,i) in toasts" :key="i" class="toast" :class="'toast-'+t.type">
@@ -679,6 +933,8 @@ createApp({
     const alertMsg = ref('');
     const toasts = ref([]);
     const logList = ref(null);
+    const colorFilter = ref('all');
+    const knowledgeModal = ref(null);
 
     // 系统指标
     const sys = ref({});
@@ -696,6 +952,9 @@ createApp({
     // 日志
     const logs = ref([]);
     const logFilter = ref('');
+
+    // 报告
+    const reportData = ref({});
 
     // 配置
     const cfg = ref({
@@ -756,9 +1015,25 @@ createApp({
       }
     };
 
+    // 三色辅助
+    const colorDesc = (c) => ({ red:'红灯-可安全清理', yellow:'黄灯-需关注', green:'绿灯-安全' }[c] || '');
+    const colorZh = (c) => ({ red:'红灯', yellow:'黄灯', green:'绿灯' }[c] || '');
+    const colorCounts = computed(() => {
+      let r=0, y=0, g=0;
+      for (const p of processes.value) {
+        const c = p.color || 'yellow';
+        if (c==='red') r++; else if (c==='green') g++; else y++;
+      }
+      return { red: r, yellow: y, green: g };
+    });
+
     // --- 计算属性 ---
     const filteredProcesses = computed(() => {
       let list = [...processes.value];
+      // 三色过滤
+      if (colorFilter.value !== 'all') {
+        list = list.filter(p => (p.color || 'yellow') === colorFilter.value);
+      }
       // 搜索过滤
       if (procSearch.value) {
         const q = procSearch.value.toLowerCase();
@@ -819,6 +1094,9 @@ createApp({
         updateChart();
       }
     });
+    const loadReport = () => api('/api/report').then(d => {
+      if (d) reportData.value = d;
+    });
 
     const saveConfig = async () => {
       const r = await api('/api/config', {
@@ -858,6 +1136,26 @@ createApp({
       }
     };
 
+    // --- 百科弹窗 ---
+    const showKnowledge = (p) => {
+      if (p.knowledge && p.knowledge.name) {
+        knowledgeModal.value = {
+          ...p.knowledge,
+          reasons: p.reasons,
+        };
+      } else {
+        knowledgeModal.value = {
+          name: p.name,
+          emoji: '❓',
+          category: 'unknown',
+          description: '未收录的进程。通常是第三方应用或服务。',
+          kill_impact: '未知，可能影响依赖该进程的其他服务。',
+          recommendation: 'caution',
+          reasons: p.reasons,
+        };
+      }
+    };
+
     // --- 保护规则 ---
     const addPattern = () => {
       const p = newPattern.value.trim();
@@ -874,6 +1172,22 @@ createApp({
     const showToast = (type, msg) => {
       toasts.value.push({ type, msg });
       setTimeout(() => { toasts.value.shift(); }, 4000);
+    };
+
+    // --- 报告辅助 ---
+    const catBarWidth = (memMb) => {
+      if (!reportData.value.total_process_mem_mb) return 10;
+      return Math.min(Math.max((memMb / reportData.value.total_process_mem_mb) * 100, 5), 100);
+    };
+    const catColor = (name) => {
+      if (name.includes('dev')) return 'var(--blue)';
+      if (name.includes('browser')) return 'var(--purple)';
+      if (name.includes('system')) return 'var(--orange)';
+      if (name.includes('communication')) return 'var(--green)';
+      if (name.includes('media')) return 'var(--warn)';
+      if (name.includes('ai')) return 'var(--accent)';
+      if (name.includes('security')) return 'var(--red)';
+      return 'var(--text2)';
     };
 
     // --- 图表 ---
@@ -989,15 +1303,20 @@ createApp({
 
     return {
       tab, paused, sseStatus, alertMsg, toasts, logList,
+      colorFilter, knowledgeModal,
       sys, stats, processes, procSearch, procFilter, procSort, procOrder,
       logs, logFilter, cfg, newPattern,
+      reportData,
       filteredProcesses, filteredLogs,
+      colorCounts,
       fmtMb, fmtUptime, gaugeColor, gaugeDash, confColor,
       verdictLabel, levelLabel, trendIcon, trendClass,
       sortArrow, toggleSort,
-      loadProcesses, loadConfig, loadLogs, loadStats,
-      saveConfig, killProc, batchKill, togglePause,
+      colorDesc, colorZh,
+      loadProcesses, loadConfig, loadLogs, loadStats, loadHistory,
+      loadReport, saveConfig, killProc, batchKill, togglePause,
       addPattern, removePattern, showToast,
+      showKnowledge, catBarWidth, catColor,
     };
   },
 }).mount('#app');
