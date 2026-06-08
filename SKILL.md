@@ -1,7 +1,7 @@
 ---
 name: aioom
-description: "AI-powered memory guardian for Windows. Manage system memory, kill high-risk processes, monitor in background, and view real-time Web GUI dashboard. Triggers: 内存占用高, 清理内存, 查看内存, 启动aioom, 打开aioom界面."
-version: "1.0.0"
+description: "AI-powered memory guardian for Windows. 三色分级智能清理系统：红(可清理)/黄(需关注)/绿(安全)，35+进程百科，内存健康报告，Web GUI实时监控仪表盘。Triggers: 内存占用高, 清理内存, 查看内存, 启动aioom, 打开aioom界面, 内存满了, 内存快满了."
+version: "2.0.0"
 metadata:
   openclaw:
     requires:
@@ -12,20 +12,23 @@ metadata:
     homepage: https://github.com/bettermen/aioom
 ---
 
-# aioom — AI Memory Guardian Skill
+# aioom — AI Memory Guardian Skill (v2.0)
 
-> **AI 内存守护工具技能**
-> 智能监控并清理 Windows 系统内存，基于 AI 评分机制识别高风险进程。
-
-# aioom — AI内存守护工具技能
+> **AI 内存守护工具技能 — 三色分级体系**
+> 智能监控并清理 Windows 系统内存，基于 AI 评分 + 三色分级机制识别和管理进程。
 
 ## 概述
 
-aioom 是一个 AI 驱动的内存守护进程，参考 earlyoom 设计，通过 AI 评分机制智能识别内存泄漏进程并执行清理。支持 CLI 守护模式和 Web GUI 可视化面板两种形态。
+aioom 是一个 AI 驱动的内存守护进程，参考 earlyoom 设计，通过 AI 评分机制智能识别内存泄漏进程并执行清理。
+
+**v2.0 核心升级 — 三色分级体系：**
+- 🔴 **红灯 (TERM/KILL)** — 可安全清理的进程，AI 高置信度判定
+- 🟡 **黄灯 (WATCH/SAFE)** — 需关注但暂不处理的进程
+- 🟢 **绿灯 (PROTECTED)** — 受保护进程，终止可能导致系统不稳定
 
 **项目路径：** `C:\Users\PC\WorkBuddy\2026-05-15-task-3\aioom\`
 **Web 端口：** `http://localhost:8866`
-**日志文件：** `C:\Users\PC\WorkBuddy\2026-05-15-task-3\aioom.log`
+**GitHub：** https://github.com/bettermen/aioom
 
 ---
 
@@ -153,7 +156,9 @@ print(f"Web GUI 已在 http://localhost:8866 启动，PID: {proc.pid}")
 
 Web 面板功能：
 - 实时内存/CPU 折线图（Chart.js）
-- 进程列表及 AI 评分
+- 🚦 三色分级进程列表（红/黄/绿分组过滤）
+- 📖 进程百科弹窗（点击进程名查看用途、终止影响、安全建议）
+- 📊 内存健康报告（三色统计摘要 + 优化建议 + 分类内存占用）
 - 一键终止高风险进程
 - 配置阈值调整
 
